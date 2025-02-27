@@ -1,5 +1,9 @@
+import logging
 import time
+from pathlib import Path
+
 from PIL import Image
+import uuid
 
 from selenium import webdriver
 from selenium.common import TimeoutException
@@ -7,6 +11,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
+
+# Настройка логгирования
+logging.basicConfig(level=logging.INFO)
 
 class MireaScheduleParser:
     def __init__(self):
@@ -19,6 +26,9 @@ class MireaScheduleParser:
         self.driver = webdriver.Chrome(options=self.options)
         # заготовка для получения координат рамки с расписанием
         self.schedule_box_location = ''
+        # имя финального скриншота с расписанием, для того, чтобы передать его
+        # через бота, а потом удалить из файлов
+        self.cropped_screenshot_name = ''
 
     def page_parser(self, group_number: str):
         # Открываем страницу
@@ -50,10 +60,10 @@ class MireaScheduleParser:
                 self.driver.implicitly_wait(5)
 
             except TimeoutException as e:
-                print(f"Элемент не найден: {e}")
+                logging.info(f"Элемент по ID 'rs-:Rlhr6:' не найден: {e}")
 
         except TimeoutException as e:
-            print(f"Элемент не найден: {e}")
+            logging.info(f"Элемент по ID 'schedule_iframe' не найден: {e}")
         finally:
 
             # Возвращаемся на основную страницу
@@ -63,11 +73,13 @@ class MireaScheduleParser:
             required_width = self.driver.execute_script('return document.body.parentNode.scrollWidth')
             required_height = self.driver.execute_script('return document.body.parentNode.scrollHeight')
             self.driver.set_window_size(required_width, required_height)
-            self.driver.save_screenshot("screenshot.png")
+            unique_screenshot_id = uuid.uuid4()
+            screenshot_name = f'{unique_screenshot_id}_{group_number}_screenshot.png'
+            self.driver.save_screenshot(screenshot_name)
             self.driver.set_window_size(original_size['width'], original_size['height'])
 
             # Загружаем скриншот с помощью Pillow
-            screenshot = Image.open("screenshot.png")
+            screenshot = Image.open(screenshot_name)
 
             # Координаты области, которую нужно вырезать
             left = self.schedule_box_location['x']  # x-координата
@@ -83,10 +95,24 @@ class MireaScheduleParser:
             cropped_screenshot = screenshot.crop((left, top, right, bottom))
 
             # Сохраняем обрезанный скриншот
-            cropped_screenshot.save("../media/mirea_schedule_parser_media/cropped_screenshot.png")
+            cropped_screenshot_name = f"cropped_{screenshot_name}"
+            cropped_screenshot.save(f"../media/mirea_schedule_parser_media/{cropped_screenshot_name}")
+            self.cropped_screenshot_name = cropped_screenshot_name
+
+            # удаляем исходный скриншот
+            screenshot_name_path = Path(screenshot_name)
+            try:
+                # Удаление файла
+                screenshot_name_path.unlink()
+                logging.info(f"Скриншот '{screenshot_name}' удален.")
+            except FileNotFoundError:
+                logging.info(f"Скриншот '{screenshot_name}' не существует.")
+            except Exception as e:
+                logging.info(f"Ошибка при удалении скриншота '{screenshot_name}': {e}")
 
             self.driver.quit()
+            return self.cropped_screenshot_name
 
 test_class = MireaScheduleParser()
 
-test_class.page_parser("УДМО-01-24")
+print(test_class.page_parser("УДМО-01-24"))
