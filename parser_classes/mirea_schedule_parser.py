@@ -30,7 +30,7 @@ class MireaScheduleParser:
         # через бота, а потом удалить из файлов
         self.cropped_screenshot_name = ''
 
-    def page_parser(self, group_number: str):
+    def page_parser(self, group_number: str, path_to_mirea_schedule_parser_media="../media/mirea_schedule_parser_media/"):
         # Открываем страницу
         self.driver.get("https://www.mirea.ru/schedule/")
         # Сохраняем её размер (чтобы потом сделать скриншот)
@@ -75,11 +75,11 @@ class MireaScheduleParser:
             self.driver.set_window_size(required_width, required_height)
             unique_screenshot_id = uuid.uuid4()
             screenshot_name = f'{unique_screenshot_id}_{group_number}_screenshot.png'
-            self.driver.save_screenshot(screenshot_name)
+            self.driver.save_screenshot(f"{path_to_mirea_schedule_parser_media}{screenshot_name}")
             self.driver.set_window_size(original_size['width'], original_size['height'])
 
             # Загружаем скриншот с помощью Pillow
-            screenshot = Image.open(screenshot_name)
+            screenshot = Image.open(f"{path_to_mirea_schedule_parser_media}{screenshot_name}")
 
             # Координаты области, которую нужно вырезать
             left = self.schedule_box_location['x']  # x-координата
@@ -96,11 +96,11 @@ class MireaScheduleParser:
 
             # Сохраняем обрезанный скриншот
             cropped_screenshot_name = f"cropped_{screenshot_name}"
-            cropped_screenshot.save(f"../media/mirea_schedule_parser_media/{cropped_screenshot_name}")
+            cropped_screenshot.save(f"{path_to_mirea_schedule_parser_media}{cropped_screenshot_name}")
             self.cropped_screenshot_name = cropped_screenshot_name
 
             # удаляем исходный скриншот
-            screenshot_name_path = Path(screenshot_name)
+            screenshot_name_path = Path(f"{path_to_mirea_schedule_parser_media}{screenshot_name}")
             try:
                 # Удаление файла
                 screenshot_name_path.unlink()
@@ -113,6 +113,6 @@ class MireaScheduleParser:
             self.driver.quit()
             return self.cropped_screenshot_name
 
-test_class = MireaScheduleParser()
-
-print(test_class.page_parser("УДМО-01-24"))
+# test_class = MireaScheduleParser()
+#
+# print(test_class.page_parser("УДМО-01-24"))

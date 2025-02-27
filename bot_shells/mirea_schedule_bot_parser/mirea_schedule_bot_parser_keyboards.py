@@ -10,3 +10,11 @@ start_kb = ReplyKeyboardMarkup(
     ],
     resize_keyboard=True  # Клавиатура подстраивается под размер экрана
 )
+
+# остановка машины состояний
+fsm_cmd_cancel_kb = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Вернуться в главное меню")],
+    ],
+    resize_keyboard=True  # Клавиатура подстраивается под размер экрана
+)
