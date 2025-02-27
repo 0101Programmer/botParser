@@ -1,14 +1,12 @@
+import asyncio
 import logging
-
-from aiogram.types import InlineKeyboardMarkup
-from dotenv import load_dotenv
 import os
-
 from aiogram import Bot, Dispatcher, types
+from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.client.default import DefaultBotProperties
-import asyncio
+from dotenv import load_dotenv
+
 
 from bot_shells.mirea_schedule_bot_parser.mirea_schedule_bot_parser_keyboards import start_kb
 
@@ -23,6 +21,7 @@ bot = Bot(
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 dp = Dispatcher()
+
 # -----------------------------------------------------------------------------
 # Обработчик команды /start
 # -----------------------------------------------------------------------------
@@ -32,9 +31,11 @@ async def send_welcome(message: types.Message):
                          "Пожалуйста, выбери необходимое действие",
                          reply_markup=start_kb)
 # -----------------------------------------------------------------------------
-# Расписание на сегодня
+# "Расписание на сегодня"
 # -----------------------------------------------------------------------------
-
+@dp.message(lambda message: message.text == "Расписание на сегодня")
+async def handle_today_schedule(message: types.Message):
+    await message.answer("Вы отправили команду!")
 # -----------------------------------------------------------------------------
 # Обработчик всех сообщений
 # -----------------------------------------------------------------------------
@@ -45,7 +46,7 @@ async def all_messages(message: types.Message):
 # Запуск бота
 # -----------------------------------------------------------------------------
 async def main():
-    await dp.start_polling(bot)
+    await dp.start_polling(bot, allowed_updates=[])
 
 if __name__ == '__main__':
     asyncio.run(main())
