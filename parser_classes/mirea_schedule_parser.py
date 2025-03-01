@@ -14,7 +14,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
-# Настройка логгирования
+# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
 class MireaScheduleParser:
@@ -48,7 +48,7 @@ class MireaScheduleParser:
             # Переключаемся на iframe
             self.driver.switch_to.frame(iframe)
             try:
-                # Теперь ищем элемент внутри iframe
+                # Теперь ищем элемент для ввода номера группы внутри iframe
                 element = WebDriverWait(self.driver, 10).until(
                     ec.presence_of_element_located((By.ID, "rs-:Rlhr6:")))
                 # отправляем значение номера группы в поле для ввода
@@ -81,7 +81,7 @@ class MireaScheduleParser:
             logging.info(f"Элемент по ID 'schedule_iframe' не найден: {e}")
         finally:
 
-            # Возвращаемся на основную страницу
+            # Возвращаемся на основную страницу (фрейм)
             self.driver.switch_to.default_content()
 
             # делаем скриншот страницы (по размеру страницы)
@@ -129,19 +129,17 @@ class MireaScheduleParser:
             return self.cropped_screenshot_name
 
     def particular_date_schedule_parser(self, group_number: str,
-                                        path_to_schedule_parser_media="../media/schedule_parser_media/",
-                                        previous_month=False, next_month=False, current_month=False,
-                                        required_date=None
+                                        path_to_mirea_schedule_parser_media="../media/mirea_schedule_parser_media/",
+                                        previous_month=False, next_month=False, required_date=None
                                         ):
         """
 
+        :param path_to_mirea_schedule_parser_media: путь для сохранения скриншота с расписанием
         :param required_date: дата, которую необходимо найти в формате "Январь, 2025, 5"
         :param group_number: номер группы
-        :param path_to_schedule_parser_media: путь для сохранения скриншота с расписанием
         :param previous_month: нужно ли искать данные за предыдущий месяц
         :param next_month: нужно ли искать данные за следующий месяц
-        :param current_month: нужно ли искать данные за текущий месяц
-        :return:
+        :return: название итогового скриншота с расписанием на конкретный день
         """
 
         # Словарь для преобразования русского названия месяца в числовое значение
@@ -179,8 +177,6 @@ class MireaScheduleParser:
             previous_month = True
         elif (parsed_required_date.year, parsed_required_date.month) > (current_date.year, current_date.month):
             next_month = True
-        else:
-            current_month = True
 
 
         # Открываем страницу
@@ -253,10 +249,6 @@ class MireaScheduleParser:
                             select_month_button.text.replace('.', '').split(',')[0]):
                         self.driver.execute_script("arguments[0].click();", next_month_button)
 
-                elif current_month:
-                    # Не ищем дату, тк по умолчанию в расписании на сайте МИРЭА выбирается текущий месяц и год
-                    pass
-
                 # Ожидаем появления элемента (class="rs-calendar-body"), из него необходимо будет выбрать строку с неделей,
                 # которая подходит под условие: запрашиваемый день и месяц
 
@@ -306,7 +298,7 @@ class MireaScheduleParser:
                 except TimeoutException:
                     logging.info(f"Successful await")
 
-                # Теперь поле ввода номера группы
+                # Теперь ищем поле ввода номера группы
                 group_number_input = WebDriverWait(self.driver, 10).until(
                     ec.presence_of_element_located((By.ID, "rs-:Rlhr6:")))
                 # отправляем значение номера группы в поле для ввода
@@ -334,8 +326,6 @@ class MireaScheduleParser:
                 except TimeoutException:
                     logging.info(f"Successful await")
 
-                self.driver.save_screenshot('test.png')
-
             except TimeoutException as e:
                 logging.info(f"Элемент по CLASS_NAME 'rs-btn rs-btn-default' не найден: {e}")
 
@@ -343,10 +333,58 @@ class MireaScheduleParser:
             logging.info(f"Элемент по ID 'schedule_iframe' не найден: {e}")
         finally:
 
+            # Возвращаемся на основную страницу (фрейм)
+            self.driver.switch_to.default_content()
+
+            # делаем скриншот страницы (по размеру страницы)
+            required_width = self.driver.execute_script('return document.body.parentNode.scrollWidth')
+            required_height = self.driver.execute_script('return document.body.parentNode.scrollHeight')
+            self.driver.set_window_size(required_width, required_height)
+            unique_screenshot_id = uuid.uuid4()
+            screenshot_name = f'{unique_screenshot_id}_{group_number}_screenshot.png'
+            self.driver.save_screenshot(f"{path_to_mirea_schedule_parser_media}{screenshot_name}")
+            self.driver.set_window_size(original_size['width'], original_size['height'])
+
+            # Загружаем скриншот с помощью Pillow
+            screenshot = Image.open(f"{path_to_mirea_schedule_parser_media}{screenshot_name}")
+
+            # Координаты области, которую нужно вырезать
+            left = self.schedule_box_location['x']  # x-координата
+            top = self.schedule_box_location['y']  # y-координата
+            width = 500  # ширина области
+            height = 750  # высота области
+
+            # Вычисляем правую и нижнюю границы
+            right = left + width + 80
+            bottom = top + height + 150
+
+            # Обрезаем скриншот до нужной области
+            cropped_screenshot = screenshot.crop((left, top, right, bottom))
+
+            # Сохраняем обрезанный скриншот
+            cropped_screenshot_name = f"cropped_{screenshot_name}"
+            cropped_screenshot.save(f"{path_to_mirea_schedule_parser_media}{cropped_screenshot_name}")
+            self.cropped_screenshot_name = cropped_screenshot_name
+
+            # удаляем исходный скриншот
+            screenshot_name_path = Path(f"{path_to_mirea_schedule_parser_media}{screenshot_name}")
+            try:
+                # Удаление файла
+                screenshot_name_path.unlink()
+                logging.info(f"Скриншот '{screenshot_name}' удален.")
+            except FileNotFoundError:
+                logging.info(f"Скриншот '{screenshot_name}' не существует.")
+            except Exception as e:
+                logging.info(f"Ошибка при удалении скриншота '{screenshot_name}': {e}")
+
+            # Closes the browser and shuts down the ChromiumDriver executable.
             self.driver.quit()
+            # Возвращаем имя обрезанного скриншота, чтобы отправить его через бота и удалить
+            return self.cropped_screenshot_name
 
 
 test_class = MireaScheduleParser()
 #
 # print(test_class.datetime_now_schedule_page_parser("УДМО-01-24"))
+# test_class.particular_date_schedule_parser("УДМО-01-24", required_date="Март, 2025, 4")
 test_class.particular_date_schedule_parser("УДМО-01-24", required_date="Март, 2025, 4")
