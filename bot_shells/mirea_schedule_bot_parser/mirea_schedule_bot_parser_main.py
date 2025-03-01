@@ -60,7 +60,7 @@ async def fsm_group_chosen(message: types.Message, state: FSMContext):
         await state.update_data(chosen_group=message.text)
         group_data = await state.get_data()
         schedule_parser = MireaScheduleParser()
-        schedule_img = schedule_parser.page_parser(group_data["chosen_group"], f"{Path(__file__).parents[2]}/media/mirea_schedule_parser_media/")
+        schedule_img = schedule_parser.datetime_now_schedule_page_parser(group_data["chosen_group"], f"{Path(__file__).parents[2]}/media/mirea_schedule_parser_media/")
         schedule_img_path = f"{Path(__file__).parents[2]}/media/mirea_schedule_parser_media/{schedule_img}"
         # Создание объекта FSInputFile
         photo_input_file = FSInputFile(schedule_img_path)
@@ -103,3 +103,4 @@ async def main():
 if __name__ == '__main__':
     asyncio.run(main())
 
+# надо доработать ошибку если группа не существует, а также если проблемы с подключениеми т.д.

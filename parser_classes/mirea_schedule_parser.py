@@ -7,6 +7,7 @@ import uuid
 
 from selenium import webdriver
 from selenium.common import TimeoutException
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -30,7 +31,7 @@ class MireaScheduleParser:
         # через бота, а потом удалить из файлов
         self.cropped_screenshot_name = ''
 
-    def page_parser(self, group_number: str, path_to_mirea_schedule_parser_media="../media/mirea_schedule_parser_media/"):
+    def datetime_now_schedule_page_parser(self, group_number: str, path_to_mirea_schedule_parser_media="../media/mirea_schedule_parser_media/"):
         # Открываем страницу
         self.driver.get("https://www.mirea.ru/schedule/")
         # Сохраняем её размер (чтобы потом сделать скриншот)
@@ -113,6 +114,67 @@ class MireaScheduleParser:
             self.driver.quit()
             return self.cropped_screenshot_name
 
-# test_class = MireaScheduleParser()
+    def particular_date_schedule_parser(self, group_number: str, path_to_schedule_parser_media="../media/schedule_parser_media/"):
+        # Открываем страницу
+        self.driver.get("https://www.mirea.ru/schedule/")
+        # Сохраняем её размер (чтобы потом сделать скриншот)
+        original_size = self.driver.get_window_size()
+
+        # Находим iframe с расписанием (+ ждём загрузку)
+        try:
+            iframe = WebDriverWait(self.driver, 10).until(
+                ec.presence_of_element_located((By.ID, "schedule_iframe")))
+            # получаем его координаты, чтобы потом обрезать скриншот всей страницы по ним
+            schedule_box_location = iframe.location
+            self.schedule_box_location = schedule_box_location
+            # Переключаемся на iframe
+            self.driver.switch_to.frame(iframe)
+            try:
+                # Теперь ищем элемент (class="SelectDateButtons_buttons___VT0o") внутри iframe
+                select_date_buttons = WebDriverWait(self.driver, 10).until(
+                    ec.presence_of_element_located((By.CLASS_NAME, "SelectDateButtons_buttons___VT0o")))
+
+                # Находим кнопку с классами "rs-btn rs-btn-default"
+                middle_button = select_date_buttons.find_element(By.XPATH,
+                                              ".//button[contains(@class, 'rs-btn') "
+                                              "and contains(@class, 'rs-btn-default') "
+                                              "and not(contains(@class, 'rs-btn-icon'))]")
+                middle_button.click()
+
+                # class="SelectDateButtons_body__2bD_P"
+                # Ожидаем появления нового элемента
+                select_date_buttons_body = WebDriverWait(self.driver, 10).until(
+                    ec.presence_of_element_located((By.CLASS_NAME, "SelectDateButtons_body__2bD_P"))
+                )
+                print(select_date_buttons_body.get_attribute('innerHTML'))
+
+                # Находим кнопку
+                previous_month_button = select_date_buttons_body.find_element(By.XPATH,
+                                                                              ".//button[@aria-label='Previous month']")
+
+                # Выполняем клик через JavaScript
+                self.driver.execute_script("arguments[0].click();", previous_month_button)
+                print("Кнопка 'Previous month' нажата через JavaScript.")
+                self.driver.implicitly_wait(5)
+
+                # Ждём, чтобы увидеть результат
+                self.driver.implicitly_wait(15)
+                self.driver.save_screenshot('test.png')
+
+            except TimeoutException as e:
+                logging.info(f"Элемент по CLASS_NAME 'rs-btn rs-btn-default' не найден: {e}")
+
+        except TimeoutException as e:
+            logging.info(f"Элемент по ID 'schedule_iframe' не найден: {e}")
+        finally:
+
+            # Возвращаемся на основную страницу
+            # self.driver.switch_to.default_content()
+
+            self.driver.quit()
+
+
+test_class = MireaScheduleParser()
 #
-# print(test_class.page_parser("УДМО-01-24"))
+# print(test_class.datetime_now_schedule_page_parser("УДМО-01-24"))
+test_class.particular_date_schedule_parser("УДМО-01-24")
