@@ -383,8 +383,6 @@ class MireaScheduleParser:
             return self.cropped_screenshot_name
 
 
-test_class = MireaScheduleParser()
-#
+# test_class = MireaScheduleParser()
 # print(test_class.datetime_now_schedule_page_parser("УДМО-01-24"))
-# test_class.particular_date_schedule_parser("УДМО-01-24", required_date="Март, 2025, 4")
-test_class.particular_date_schedule_parser("УДМО-01-24", required_date="Март, 2025, 4")
+# print(test_class.particular_date_schedule_parser("УДМО-01-24", required_date="Март, 2025, 4"))

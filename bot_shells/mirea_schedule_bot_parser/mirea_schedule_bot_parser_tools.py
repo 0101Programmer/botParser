@@ -7,3 +7,11 @@ def group_number_validator(group_number):
         return str(group_number)
     else:
         return False
+
+def date_validator(date):
+    date = str(date)
+    pattern = r'^[А-Я][а-я]+, \d{4}, \d{1,2}$'
+    if re.match(pattern, date):
+        return str(date)
+    else:
+        return False
