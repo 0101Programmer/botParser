@@ -60,7 +60,7 @@ async def fsm_group_choice(message: types.Message, state: FSMContext):
         await state.update_data(chosen_group=message.text)
         group_data = await state.get_data()
         schedule_parser = MireaScheduleParser()
-        schedule_img = schedule_parser.datetime_now_schedule_page_parser(group_data["chosen_group"], f"{Path(__file__).parents[2]}/media/mirea_schedule_parser_media/")
+        schedule_img = schedule_parser.datetime_now_schedule_page_parser(group_data['chosen_group'], f"{Path(__file__).parents[2]}/media/mirea_schedule_parser_media/")
         schedule_img_path = f"{Path(__file__).parents[2]}/media/mirea_schedule_parser_media/{schedule_img}"
         # Создание объекта FSInputFile
         photo_input_file = FSInputFile(schedule_img_path)
@@ -68,7 +68,7 @@ async def fsm_group_choice(message: types.Message, state: FSMContext):
         current_time = datetime.now()
         # Форматирование текущего времени
         formatted_current_time = current_time.strftime("%Y-%m-%d %H:%M")
-        await message.answer_photo(photo_input_file, caption=f"Расписание для группы <u>{group_data["chosen_group"]}</u> "
+        await message.answer_photo(photo_input_file, caption=f"Расписание для группы <u>{group_data['chosen_group']}</u> "
                                                              f"на <u>{formatted_current_time}</u>\n"
                                                              f"(если расписание отобразилось некорректно, пожалуйста, "
                                                              f"попробуйте сделать запрос ещё раз)",
@@ -131,8 +131,8 @@ async def fsm_date_choice(message: types.Message, state: FSMContext):
         await state.update_data(chosen_date=message.text)
         got_data = await state.get_data()
         schedule_parser = MireaScheduleParser()
-        schedule_img = schedule_parser.particular_date_schedule_parser(group_number=got_data["chosen_group"],
-                                                                       required_date=got_data["chosen_date"],
+        schedule_img = schedule_parser.particular_date_schedule_parser(group_number=got_data['chosen_group'],
+                                                                       required_date=got_data['chosen_date'],
                                                                          path_to_mirea_schedule_parser_media=
                                                                        f"{Path(__file__).parents[2]}/media/mirea_schedule_parser_media/")
 
@@ -140,8 +140,8 @@ async def fsm_date_choice(message: types.Message, state: FSMContext):
         # Создание объекта FSInputFile, для того, чтобы отправить изображение
         photo_input_file = FSInputFile(schedule_img_path)
         await message.answer_photo(photo_input_file,
-                                   caption=f"Расписание для группы:\n<u>{got_data["chosen_group"]}</u>\nна дату:\n"
-                                           f"<u>{got_data["chosen_date"]}</u>\n"
+                                   caption=f"Расписание для группы:\n<u>{got_data['chosen_group']}</u>\nна дату:\n"
+                                           f"<u>{got_data['chosen_date']}</u>\n"
                                            f"(если расписание отобразилось некорректно, пожалуйста, "
                                            f"попробуйте сделать запрос ещё раз)",
                                    reply_markup=start_kb)
