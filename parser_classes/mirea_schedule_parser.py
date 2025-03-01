@@ -1,3 +1,4 @@
+import datetime
 import logging
 import time
 from pathlib import Path
@@ -53,7 +54,13 @@ class MireaScheduleParser:
                 # отправляем значение номера группы в поле для ввода
                 element.send_keys(str(group_number))
                 # Ждём загрузки подсказки для выбора номера группы
-                self.driver.implicitly_wait(5)
+                try:
+                    WebDriverWait(self.driver, 5).until(
+                        ec.presence_of_element_located((By.CLASS_NAME, "some-plug-class"))
+                    )
+                    logging.info("Suddenly 'some-plug-class' was found")
+                except TimeoutException:
+                    logging.info(f"Successful await")
                 # выбираем предложенный вариант из списка
                 element.send_keys(Keys.ARROW_DOWN)
                 element.send_keys(Keys.ENTER)
@@ -63,11 +70,9 @@ class MireaScheduleParser:
                     WebDriverWait(self.driver, 5).until(
                         ec.presence_of_element_located((By.CLASS_NAME, "some-plug-class"))
                     )
-                    logging.info("'some-plug-class' was found")
-                except TimeoutException as e:
-                    logging.info(f"No any 'some-plug-class' was found: {e}")
-
-                self.driver.save_screenshot('test.png')
+                    logging.info("Suddenly 'some-plug-class' was found")
+                except TimeoutException:
+                    logging.info(f"Successful await")
 
             except TimeoutException as e:
                 logging.info(f"Элемент по ID 'rs-:Rlhr6:' не найден: {e}")
@@ -123,7 +128,61 @@ class MireaScheduleParser:
             self.driver.quit()
             return self.cropped_screenshot_name
 
-    def particular_date_schedule_parser(self, group_number: str, path_to_schedule_parser_media="../media/schedule_parser_media/"):
+    def particular_date_schedule_parser(self, group_number: str,
+                                        path_to_schedule_parser_media="../media/schedule_parser_media/",
+                                        previous_month=False, next_month=False, current_month=False,
+                                        required_date=None
+                                        ):
+        """
+
+        :param required_date: дата, которую необходимо найти в формате "Январь, 2025, 5"
+        :param group_number: номер группы
+        :param path_to_schedule_parser_media: путь для сохранения скриншота с расписанием
+        :param previous_month: нужно ли искать данные за предыдущий месяц
+        :param next_month: нужно ли искать данные за следующий месяц
+        :param current_month: нужно ли искать данные за текущий месяц
+        :return:
+        """
+
+        # Словарь для преобразования русского названия месяца в числовое значение
+        month_translation = {
+            "Январь": 1,
+            "Февраль": 2,
+            "Март": 3,
+            "Апрель": 4,
+            "Май": 5,
+            "Июнь": 6,
+            "Июль": 7,
+            "Август": 8,
+            "Сентябрь": 9,
+            "Октябрь": 10,
+            "Ноябрь": 11,
+            "Декабрь": 12,
+        }
+
+        # Преобразуем месяц в число
+        month = month_translation[required_date.replace(' ', '').split(',')[0]]
+
+        # Преобразуем год в число
+        year = int(required_date.replace(' ', '').split(',')[1])
+
+        # Преобразуем день в число
+        day = int(required_date.replace(' ', '').split(',')[2])
+
+        # Создаём объект datetime.date (день по умолчанию 1)
+        parsed_required_date = datetime.date(year, month, day)
+
+        # смотрим, за какой период (предыдущий, текущий, будущий) необходимо найти данные
+
+        current_date = datetime.date.today()
+        if (parsed_required_date.year, parsed_required_date.month) < (current_date.year, current_date.month):
+            previous_month = True
+        elif (parsed_required_date.year, parsed_required_date.month) > (current_date.year, current_date.month):
+            next_month = True
+        else:
+            current_month = True
+
+
         # Открываем страницу
         self.driver.get("https://www.mirea.ru/schedule/")
         # Сохраняем её размер (чтобы потом сделать скриншот)
@@ -144,38 +203,136 @@ class MireaScheduleParser:
                     ec.presence_of_element_located((By.CLASS_NAME, "SelectDateButtons_buttons___VT0o"))
                 )
 
-                # Находим кнопку с классами "rs-btn rs-btn-default"
-                middle_button = select_date_buttons.find_element(
+                # Находим кнопку с классами "rs-btn rs-btn-default", при нажатии на которую появляется возможность
+                # выбрать дату расписания (находится в центре)
+                middle_calendar_header_button = select_date_buttons.find_element(
                     By.XPATH,
                     ".//button[contains(@class, 'rs-btn') "
                     "and contains(@class, 'rs-btn-default') "
                     "and not(contains(@class, 'rs-btn-icon'))]"
                 )
-                middle_button.click()
+                middle_calendar_header_button.click()
 
-                # Ожидаем появления нового элемента (class="SelectDateButtons_body__2bD_P")
+                # Ожидаем появления нового элемента (class="SelectDateButtons_body__2bD_P") - календарь для выбора даты
                 select_date_buttons_body = WebDriverWait(self.driver, 10).until(
                     ec.presence_of_element_located((By.CLASS_NAME, "SelectDateButtons_body__2bD_P"))
                 )
-                print(select_date_buttons_body.get_attribute('innerHTML'))
 
-                # Находим кнопку "Previous month"
-                previous_month_button = select_date_buttons_body.find_element(
-                    By.XPATH, ".//button[@aria-label='Previous month']"
+                # Находим кнопку "Select month", которая содержит текущий месяц и год
+                # это будет необходимо, чтобы найти дату, указанную пользователем
+                select_month_button = select_date_buttons_body.find_element(
+                    By.XPATH, ".//button[@aria-label='Select month']"
                 )
 
-                # Выполняем клик через JavaScript (если обычный клик не работает)
-                self.driver.execute_script("arguments[0].click();", previous_month_button)
-                print("Кнопка 'Previous month' нажата через JavaScript.")
+                # сохраняем координаты, в последствии по ним вычислим область клика, чтобы закрыть календарь
+                select_month_button_location = select_month_button.location
+
+                if previous_month:
+                    # Находим кнопку "Previous month", будем нажимать на неё для прокрутки дат по месяцам
+                    previous_month_button = select_date_buttons_body.find_element(
+                        By.XPATH, ".//button[@aria-label='Previous month']"
+                    )
+
+                    # Выполняем клик через JavaScript (обычный клик тут не работает)
+
+                    while not required_date.replace(' ', '').split(',')[0].lower().startswith(select_month_button.text.replace('.', '').split(',')[0]):
+                        '''
+                        Пока месяц запрошенной даты не начинается с первого значения кнопки select_month_button.text.replace('.', '').split(',')[0] (например, 'мар' - март)
+                        цикл будет нажимать на кнопку перемотки даты
+                        '''
+                        self.driver.execute_script("arguments[0].click();", previous_month_button)
+
+                elif next_month:
+                    # Находим кнопку "Next month", здесь выполняется всё то же самое, но для поиска даты в будущем
+                    next_month_button = select_date_buttons_body.find_element(
+                        By.XPATH, ".//button[@aria-label='Next month']"
+                    )
+
+                    # Выполняем клик через JavaScript
+                    while not required_date.replace(' ', '').split(',')[0].lower().startswith(
+                            select_month_button.text.replace('.', '').split(',')[0]):
+                        self.driver.execute_script("arguments[0].click();", next_month_button)
+
+                elif current_month:
+                    # Не ищем дату, тк по умолчанию в расписании на сайте МИРЭА выбирается текущий месяц и год
+                    pass
+
+                # Ожидаем появления элемента (class="rs-calendar-body"), из него необходимо будет выбрать строку с неделей,
+                # которая подходит под условие: запрашиваемый день и месяц
+
+                calendar_body = WebDriverWait(self.driver, 10).until(
+                    ec.presence_of_element_located((By.CLASS_NAME, "rs-calendar-body"))
+                )
+
+                # Находим все строки с ячейками
+                rows = calendar_body.find_elements(By.XPATH,
+                                                   ".//div[@role='row' and contains(@class, 'rs-calendar-table-row') and .//div[@role='gridcell']]")
+                # Перебираем строки
+                for row in rows:
+
+                    # Находим и перебираем все ячейки в текущей строке (row)
+                    cells = row.find_elements(By.CSS_SELECTOR, "div[role='gridcell']")
+                    for cell in cells:
+                        '''
+                        Преобразуем атрибут 'aria-label' в такой вид, например, ['30', 'дек', '2024'], а далее проверяем,
+                        совпадает ли значение какой-либо ячейки с запрошенными месяцем и числом и, если есть совпадение -
+                        нажимаем на эту ячейку для выбора
+                        '''
+                        if (required_date.replace(' ', '').split(',')[0].lower().startswith(
+                                cell.get_attribute('aria-label').replace('.', '').split()[1]) and
+                                int(required_date.replace(' ', '').split(',')[2]) == int(cell.get_attribute(
+                                    'aria-label').replace('.', '').split()[0])):
+                            self.driver.execute_script("arguments[0].click();", cell)
 
                 # Ожидаем, чтобы прогрузить результат на странице ("some-plug-class" - просто заглушка)
+                try:
+                    WebDriverWait(self.driver, 1.5).until(
+                        ec.presence_of_element_located((By.CLASS_NAME, "some-plug-class"))
+                    )
+                    logging.info("Suddenly 'some-plug-class' was found")
+                except TimeoutException:
+                    logging.info(f"Successful await")
+
+                # Сворачиваем календарь, чтобы можно было ввести номер группы и получить расписание на запрошенную дату
+                actions = ActionChains(self.driver)
+                actions.send_keys(Keys.ESCAPE).perform()
+
+                # Ожидаем, чтобы прогрузить результат на странице
+                try:
+                    WebDriverWait(self.driver, 1.5).until(
+                        ec.presence_of_element_located((By.CLASS_NAME, "some-plug-class"))
+                    )
+                    logging.info("Suddenly 'some-plug-class' was found")
+                except TimeoutException:
+                    logging.info(f"Successful await")
+
+                # Теперь поле ввода номера группы
+                group_number_input = WebDriverWait(self.driver, 10).until(
+                    ec.presence_of_element_located((By.ID, "rs-:Rlhr6:")))
+                # отправляем значение номера группы в поле для ввода
+                group_number_input.send_keys(str(group_number))
+
+                # Ожидаем, чтобы прогрузить подсказку
                 try:
                     WebDriverWait(self.driver, 5).until(
                         ec.presence_of_element_located((By.CLASS_NAME, "some-plug-class"))
                     )
-                    logging.info("'some-plug-class' was found")
-                except TimeoutException as e:
-                    logging.info(f"No any 'some-plug-class' was found: {e}")
+                    logging.info("Suddenly 'some-plug-class' was found")
+                except TimeoutException:
+                    logging.info(f"Successful await")
+
+                # выбираем предложенный вариант из списка
+                group_number_input.send_keys(Keys.ARROW_DOWN)
+                group_number_input.send_keys(Keys.ENTER)
+
+                # Ожидаем, чтобы прогрузить результат
+                try:
+                    WebDriverWait(self.driver, 5).until(
+                        ec.presence_of_element_located((By.CLASS_NAME, "some-plug-class"))
+                    )
+                    logging.info("Suddenly 'some-plug-class' was found")
+                except TimeoutException:
+                    logging.info(f"Successful await")
 
                 self.driver.save_screenshot('test.png')
 
@@ -186,13 +343,10 @@ class MireaScheduleParser:
             logging.info(f"Элемент по ID 'schedule_iframe' не найден: {e}")
         finally:
 
-            # Возвращаемся на основную страницу
-            # self.driver.switch_to.default_content()
-
             self.driver.quit()
 
 
-# test_class = MireaScheduleParser()
-# #
-# # print(test_class.datetime_now_schedule_page_parser("УДМО-01-24"))
-# test_class.particular_date_schedule_parser("УДМО-01-24")
+test_class = MireaScheduleParser()
+#
+# print(test_class.datetime_now_schedule_page_parser("УДМО-01-24"))
+test_class.particular_date_schedule_parser("УДМО-01-24", required_date="Март, 2025, 4")
