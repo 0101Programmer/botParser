@@ -57,8 +57,17 @@ class MireaScheduleParser:
                 # выбираем предложенный вариант из списка
                 element.send_keys(Keys.ARROW_DOWN)
                 element.send_keys(Keys.ENTER)
-                # Ждём, чтобы увидеть результат
-                self.driver.implicitly_wait(5)
+
+                # Ожидаем, чтобы прогрузить результат на странице ("some-plug-class" - просто заглушка)
+                try:
+                    WebDriverWait(self.driver, 5).until(
+                        ec.presence_of_element_located((By.CLASS_NAME, "some-plug-class"))
+                    )
+                    logging.info("'some-plug-class' was found")
+                except TimeoutException as e:
+                    logging.info(f"No any 'some-plug-class' was found: {e}")
+
+                self.driver.save_screenshot('test.png')
 
             except TimeoutException as e:
                 logging.info(f"Элемент по ID 'rs-:Rlhr6:' не найден: {e}")
@@ -132,33 +141,42 @@ class MireaScheduleParser:
             try:
                 # Теперь ищем элемент (class="SelectDateButtons_buttons___VT0o") внутри iframe
                 select_date_buttons = WebDriverWait(self.driver, 10).until(
-                    ec.presence_of_element_located((By.CLASS_NAME, "SelectDateButtons_buttons___VT0o")))
+                    ec.presence_of_element_located((By.CLASS_NAME, "SelectDateButtons_buttons___VT0o"))
+                )
 
                 # Находим кнопку с классами "rs-btn rs-btn-default"
-                middle_button = select_date_buttons.find_element(By.XPATH,
-                                              ".//button[contains(@class, 'rs-btn') "
-                                              "and contains(@class, 'rs-btn-default') "
-                                              "and not(contains(@class, 'rs-btn-icon'))]")
+                middle_button = select_date_buttons.find_element(
+                    By.XPATH,
+                    ".//button[contains(@class, 'rs-btn') "
+                    "and contains(@class, 'rs-btn-default') "
+                    "and not(contains(@class, 'rs-btn-icon'))]"
+                )
                 middle_button.click()
 
-                # class="SelectDateButtons_body__2bD_P"
-                # Ожидаем появления нового элемента
+                # Ожидаем появления нового элемента (class="SelectDateButtons_body__2bD_P")
                 select_date_buttons_body = WebDriverWait(self.driver, 10).until(
                     ec.presence_of_element_located((By.CLASS_NAME, "SelectDateButtons_body__2bD_P"))
                 )
                 print(select_date_buttons_body.get_attribute('innerHTML'))
 
-                # Находим кнопку
-                previous_month_button = select_date_buttons_body.find_element(By.XPATH,
-                                                                              ".//button[@aria-label='Previous month']")
+                # Находим кнопку "Previous month"
+                previous_month_button = select_date_buttons_body.find_element(
+                    By.XPATH, ".//button[@aria-label='Previous month']"
+                )
 
-                # Выполняем клик через JavaScript
+                # Выполняем клик через JavaScript (если обычный клик не работает)
                 self.driver.execute_script("arguments[0].click();", previous_month_button)
                 print("Кнопка 'Previous month' нажата через JavaScript.")
-                self.driver.implicitly_wait(5)
 
-                # Ждём, чтобы увидеть результат
-                self.driver.implicitly_wait(15)
+                # Ожидаем, чтобы прогрузить результат на странице ("some-plug-class" - просто заглушка)
+                try:
+                    WebDriverWait(self.driver, 5).until(
+                        ec.presence_of_element_located((By.CLASS_NAME, "some-plug-class"))
+                    )
+                    logging.info("'some-plug-class' was found")
+                except TimeoutException as e:
+                    logging.info(f"No any 'some-plug-class' was found: {e}")
+
                 self.driver.save_screenshot('test.png')
 
             except TimeoutException as e:
@@ -174,7 +192,7 @@ class MireaScheduleParser:
             self.driver.quit()
 
 
-test_class = MireaScheduleParser()
-#
-# print(test_class.datetime_now_schedule_page_parser("УДМО-01-24"))
-test_class.particular_date_schedule_parser("УДМО-01-24")
+# test_class = MireaScheduleParser()
+# #
+# # print(test_class.datetime_now_schedule_page_parser("УДМО-01-24"))
+# test_class.particular_date_schedule_parser("УДМО-01-24")
