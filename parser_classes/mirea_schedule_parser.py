@@ -1,18 +1,16 @@
 import datetime
 import logging
-import time
+import uuid
 from pathlib import Path
 
 from PIL import Image
-import uuid
-
 from selenium import webdriver
 from selenium.common import TimeoutException
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.support.ui import WebDriverWait
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -24,10 +22,13 @@ class MireaScheduleParser:
         self.options = webdriver.ChromeOptions()
         self.options.add_argument("--headless")  # Включаем headless-режим
         self.options.add_argument("--disable-gpu")  # Отключаем GPU (рекомендуется для headless)
+
         # Создаем объект браузера (в данном случае Chrome)
         self.driver = webdriver.Chrome(options=self.options)
+
         # заготовка для получения координат рамки с расписанием
         self.schedule_box_location = ''
+
         # имя финального скриншота с расписанием, для того, чтобы передать его
         # через бота, а потом удалить из файлов
         self.cropped_screenshot_name = ''
